@@ -74,6 +74,7 @@ public class DataConvert {
                             String av = String.valueOf(alphaAvrg);
                             String bv = String.valueOf(betaAvrg);
                             writer.write(av);
+                            writer.write('\n');
                             writer.write(bv);
                             writer.flush();
                             writer.close();
