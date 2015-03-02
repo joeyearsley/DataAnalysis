@@ -73,9 +73,8 @@ public class DataConvert {
                             FileWriter writer = new FileWriter(fileLoc + "Converted/" + name + "cv.csv");
                             String av = String.valueOf(alphaAvrg);
                             String bv = String.valueOf(betaAvrg);
-                            writer.append(av);
-                            writer.write(',');
-                            writer.append(bv);
+                            writer.write(av);
+                            writer.write(bv);
                             writer.flush();
                             writer.close();
                         }
