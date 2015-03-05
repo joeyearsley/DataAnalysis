@@ -80,7 +80,7 @@ public class DataConvert {
                             writer.close();
                         }
                     } else {
-                        System.out.println(ex + " EXISTS");
+                        //System.out.println(ex + " EXISTS");
                     }
                 }
             }

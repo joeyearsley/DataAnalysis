@@ -21,6 +21,8 @@ public class DataAnalysis {
     public static void main(String[] args) throws IOException{
         //Convert all data firstly
         DataConvert.Convert();
+        Similarity.selfSimilarity();
+        Similarity.diffSimilarity();
     }
 }
     
