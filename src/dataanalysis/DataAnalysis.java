@@ -5,6 +5,7 @@
  */
 package dataanalysis;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -43,7 +44,7 @@ public class DataAnalysis {
             mongoClient.getDatabaseNames();
             Set<String> diss = mongoClient.getDB("Dissertation").getCollectionNames();
             if(diss.isEmpty()){
-                mongoClient.getDB("Dissertation").createCollection("empty", null);
+                mongoClient.getDB("Dissertation").createCollection("empty", new BasicDBObject("created", true));
             }
         } catch (Exception e) {
             System.err.println("Ensure MongoDB is running!");
@@ -54,9 +55,13 @@ public class DataAnalysis {
         }
         try{
         //Convert all data firstly
-        DataConvert.convertCS();
-        DataConvert.convertTW();
-        Similarity.similarity();
+        //DataConvert.convertCS();
+        //DataConvert.convertTW();
+        //Similarity.similarity();
+            CosineSimilarity c = new CosineSimilarity();
+            c.selfSim();
+            c.diffSim();
+            c.consolidate();
         }catch(Exception mongoDB){
             System.err.println(mongoDB);
             System.err.println("Ensure MongoDB is running & try again!");
@@ -88,7 +93,7 @@ public class DataAnalysis {
                 System.err.println(shutdown);
             }
             if(start != null) start.destroy();
-            
+            mongoClient.close();
         }
     }
 }

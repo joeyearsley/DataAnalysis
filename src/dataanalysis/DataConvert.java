@@ -6,12 +6,18 @@
 package dataanalysis;
 
 import au.com.bytecode.opencsv.CSVReader;
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
 import com.mongodb.MongoClient;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 /**
  *
@@ -19,6 +25,16 @@ import java.io.IOException;
  */
 public class DataConvert {
 
+    static String fileLoc;
+    static MongoClient mongoClient;
+    static DB diss;
+    
+    public DataConvert() throws Exception{
+        fileLoc = "/Users/josephyearsley/Documents/University/Data/";
+        mongoClient = new MongoClient("localhost", 27017);
+        diss = mongoClient.getDB("Dissertation");
+    }
+    
     public static void convertCS() throws Exception {
         CSVReader reader = null;
         int alpha = 0;
@@ -26,14 +42,14 @@ public class DataConvert {
         int numberOfLines = 0;
         int betaAvrg = 0;
         int alphaAvrg = 0;
-        String fileLoc = "/Users/josephyearsley/Documents/University/Data/";
-        MongoClient mongoClient = new MongoClient( "localhost" , 27017 );
-        DB diss = mongoClient.getDB( "Dissertation" );
-        try{
-            diss.getCollectionNames();
-        }catch(Exception noDB){
-            System.err.println(noDB);
+        DBCollection cV = null;
+        Set<String> colNames = diss.getCollectionNames();
+        if (colNames.contains("columnVector")) {
+            cV = diss.getCollection("columnVector");
+        } else {
+            cV = diss.createCollection("columnVector", new BasicDBObject());
         }
+
         /**
          * Loop through data directory, check its not empty. Go through each
          * file, ensuring its not hidden or directory. Then check if its already
@@ -50,9 +66,20 @@ public class DataConvert {
                     if (pos > 0) {
                         name = name.substring(0, pos);
                     }
+                    //Break file name into database fields
+                    String subject = name.charAt(0) + "" + name.charAt(1);
+                    String task = name.charAt(2) + "" + name.charAt(3);
+                    int timesDone = Integer.parseInt(name.charAt(4) + "");
+
                     //Check that the file hasn't already been converted
-                    File ex = new File(fileLoc + "Converted/" + name + "cv.csv");
-                    if (!ex.exists()) {
+                    DBCursor curs = null;
+                    //Find task file
+                    BasicDBObject file = new BasicDBObject("subject", subject)
+                            .append("task", task)
+                            .append("timesDone", timesDone);
+                    curs = cV.find(file).limit(1);
+                    //no file returned
+                    if (!curs.hasNext()) {
                         // Do something with child
                         try {
                             //Get the CSVReader instance with specifying the delimiter to be used
@@ -86,6 +113,9 @@ public class DataConvert {
                             writer.write(bv);
                             writer.flush();
                             writer.close();
+                            file.append("alphaAvrg", alphaAvrg);
+                            file.append("betaAvrg", betaAvrg);
+                            cV.insert(file);
                         }
                     } else {
                         //System.out.println(ex + " EXISTS");
@@ -93,13 +123,24 @@ public class DataConvert {
                 }
             }
         }
+        mongoClient.close();
     }
 
     public static void convertTW() throws IOException {
         CSVReader reader = null;
         int alpha = 0;
         int beta = 0;
-        String fileLoc = "/Users/josephyearsley/Documents/University/Data/";
+        DBCollection tW = null;
+        try {
+            Set<String> colNames = diss.getCollectionNames();
+            if (colNames.contains("timeWarping")) {
+                tW = diss.getCollection("timeWarping");
+            } else {
+                tW = diss.createCollection("timeWarping", new BasicDBObject());
+            }
+        } catch (Exception noDB) {
+            System.err.println(noDB);
+        }
         /**
          * Loop through data directory, check its not empty. Go through each
          * file, ensuring its not hidden or directory. Then check if its already
@@ -116,9 +157,23 @@ public class DataConvert {
                     if (pos > 0) {
                         name = name.substring(0, pos);
                     }
+                    //Break file name into database fields
+                    String subject = name.charAt(0) + "" + name.charAt(1);
+                    String task = name.charAt(2) + "" + name.charAt(3);
+                    int timesDone = Integer.parseInt(name.charAt(4) + "");
+
                     //Check that the file hasn't already been converted
-                    File ex = new File(fileLoc + "TimeWarping/" + name + ".csv");
-                    if (!ex.exists()) {
+                    DBCursor curs = null;
+                    //Find task file
+                    BasicDBObject file = new BasicDBObject("subject", subject)
+                            .append("task", task)
+                            .append("timesDone", timesDone);
+                    curs = tW.find(file).limit(1);
+                    //Alpha
+                    List<Integer> alphaList = new ArrayList<>();
+                    //Beta
+                    List<Integer> betaList = new ArrayList<>();
+                    if (!curs.hasNext()) {
                         // Do something with child
                         FileWriter writer = new FileWriter(fileLoc + "TimeWarping/" + name + ".csv");
                         try {
@@ -132,8 +187,10 @@ public class DataConvert {
                                 alpha = Integer.parseInt(nextLine[1]) + Integer.parseInt(nextLine[2]);
                                 beta = Integer.parseInt(nextLine[3]) + Integer.parseInt(nextLine[4]);
                                 //Get average for that time between high and low
-                                String av = String.valueOf(alpha/2);
-                                String bv = String.valueOf(beta/2);
+                                String av = String.valueOf(alpha / 2);
+                                String bv = String.valueOf(beta / 2);
+                                alphaList.add(alpha / 2);
+                                betaList.add(beta / 2);
                                 writer.write(av);
                                 writer.write(',');
                                 writer.write(bv);
@@ -148,6 +205,9 @@ public class DataConvert {
                             reader.close();
                             writer.flush();
                             writer.close();
+                            file.append("alpha", alphaList);
+                            file.append("beta", betaList);
+                            tW.insert(file);
                         }
                     } else {
                         //System.out.println(ex + " EXISTS");
@@ -155,5 +215,6 @@ public class DataConvert {
                 }
             }
         }
+        mongoClient.close();
     }
 }
