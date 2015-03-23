@@ -5,8 +5,7 @@
  */
 package dataanalysis;
 
-import static dataanalysis.Similarity.selfSim;
-import java.io.FileWriter;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashMap;
@@ -22,7 +21,7 @@ public class Task {
 
     BigDecimal taskTotal;
     int taskNumber = 0;
-    Map<String, BigDecimal> taskKeeper = new HashMap<>();
+    final Map<String, BigDecimal> taskKeeper = new HashMap<>();
 
     //put latest big decimal in
     void put(String s, BigDecimal d) {

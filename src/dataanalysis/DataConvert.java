@@ -28,14 +28,14 @@ public class DataConvert {
     static String fileLoc;
     static MongoClient mongoClient;
     static DB diss;
-    
-    public DataConvert() throws Exception{
+
+    public DataConvert() throws Exception {
         fileLoc = "/Users/josephyearsley/Documents/University/Data/";
         mongoClient = new MongoClient("localhost", 27017);
         diss = mongoClient.getDB("Dissertation");
     }
-    
-    public static void convertCS() throws Exception {
+
+    public void convertCS() throws Exception {
         CSVReader reader = null;
         int alpha = 0;
         int beta = 0;
@@ -126,10 +126,10 @@ public class DataConvert {
         mongoClient.close();
     }
 
-    public static void convertTW() throws IOException {
+    public void convertTW() throws IOException {
         CSVReader reader = null;
-        int alpha = 0;
-        int beta = 0;
+        double alpha = 0;
+        double beta = 0;
         DBCollection tW = null;
         try {
             Set<String> colNames = diss.getCollectionNames();
@@ -170,9 +170,9 @@ public class DataConvert {
                             .append("timesDone", timesDone);
                     curs = tW.find(file).limit(1);
                     //Alpha
-                    List<Integer> alphaList = new ArrayList<>();
+                    List<Double> alphaList = new ArrayList<>();
                     //Beta
-                    List<Integer> betaList = new ArrayList<>();
+                    List<Double> betaList = new ArrayList<>();
                     if (!curs.hasNext()) {
                         // Do something with child
                         FileWriter writer = new FileWriter(fileLoc + "TimeWarping/" + name + ".csv");
@@ -181,16 +181,19 @@ public class DataConvert {
                             reader = new CSVReader(new FileReader(child), ',');
                             String[] nextLine;
                             //Skip first line
-                            nextLine = reader.readNext();
+                            reader.readNext();
                             while ((nextLine = reader.readNext()) != null) {
                                 //Total up low and high alpha values
-                                alpha = Integer.parseInt(nextLine[1]) + Integer.parseInt(nextLine[2]);
-                                beta = Integer.parseInt(nextLine[3]) + Integer.parseInt(nextLine[4]);
+                                alpha = Double.valueOf(nextLine[1]) + Double.valueOf(nextLine[2]);
+                                beta = Double.valueOf(nextLine[3]) + Double.valueOf(nextLine[4]);
                                 //Get average for that time between high and low
                                 String av = String.valueOf(alpha / 2);
                                 String bv = String.valueOf(beta / 2);
+                                
+                                
                                 alphaList.add(alpha / 2);
                                 betaList.add(beta / 2);
+                                
                                 writer.write(av);
                                 writer.write(',');
                                 writer.write(bv);
@@ -217,4 +220,5 @@ public class DataConvert {
         }
         mongoClient.close();
     }
+
 }

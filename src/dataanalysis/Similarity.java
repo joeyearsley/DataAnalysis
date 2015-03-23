@@ -179,8 +179,8 @@ public class Similarity {
                             char tFirst = child2.getName().charAt(2);
                             char tSecond = child2.getName().charAt(3);
                             reader = new CSVReader(new FileReader(child2), ',');
-                            List<Double> v2Alpha = new ArrayList<Double>();
-                            List<Double> v2Beta = new ArrayList<Double>();
+                            List<Double> v2Alpha = new ArrayList<>();
+                            List<Double> v2Beta = new ArrayList<>();
                             String[] nextLine2;
                             while ((nextLine2 = reader.readNext()) != null) {
                                 v2Alpha.add(Double.valueOf(nextLine2[0]));
@@ -269,7 +269,7 @@ public class Similarity {
                     //Go through everything else, making sure not same fileName
                     for (File child2 : directoryListing) {
                         //if Not a directory or hidden
-                        if (!child2.isHidden() && !child2.isDirectory() && !child.getName().equals(child2.getName())) {
+                        if (!child2.isHidden() & !child2.isDirectory() & !child.getName().equals(child2.getName())) {
                             //Get child 2 Name
                             char first = child2.getName().charAt(0);
                             char second = child2.getName().charAt(1);
@@ -280,17 +280,17 @@ public class Similarity {
                             signal2[1] = reader.readNext()[0];
                             if (!temp.exists()) {
                                 //Same first name
-                                if (first == checkFirst && second == checkSecond) {
+                                if (first == checkFirst & second == checkSecond) {
                                     //now check that tasks are same, so only checking against same tasks
-                                    if (taskFirst == tFirst && taskSecond == tSecond) {
+                                    if (taskFirst == tFirst & taskSecond == tSecond) {
                                         runningAverageSelf = runningAverageSelf.add(cosineSim(signal1, signal2));
                                     }
                                 }
                             }
                             //Different Names
-                            if (first != checkFirst && second != checkSecond) {
+                            if (first != checkFirst & second != checkSecond) {
                                 //now check that tasks are same, so only checking against same tasks
-                                if (taskFirst == tFirst && taskSecond == tSecond) {
+                                if (taskFirst == tFirst & taskSecond == tSecond) {
                                     runningAverageDiff = runningAverageDiff.add(cosineSim(signal1, signal2));
                                 }
                             }

@@ -70,22 +70,12 @@ public class CosineSimilarity {
      * timeTask to each other, divide by number of comparisons. Possibly group
      * by name and task then run through group?
      */
-    public static void selfSim() throws Exception {
+    public void selfSim() throws Exception {
 
-        DBCollection cV = diss.getCollection("columnVector");
         /**
          * dbObjIdMap - To store aggregate key groupFields - To add fields to
          * output - set of DBObjects
          */
-        Map<String, Object> dbObjIdMap = new HashMap<>();
-        dbObjIdMap.put("subject", "$subject");
-        dbObjIdMap.put("task", "$task");
-        BasicDBObject groupFields = new BasicDBObject("_id", new BasicDBObject(dbObjIdMap));
-        groupFields.append("alpha", new BasicDBObject("$push", "$alphaAvrg"));
-        groupFields.append("beta", new BasicDBObject("$push", "$betaAvrg"));
-        DBObject group = new BasicDBObject("$group", groupFields);
-        List<DBObject> pipeline = Arrays.asList(group);
-        AggregationOutput output = cV.aggregate(pipeline);
         HashMap<String, BigDecimal> keepTrack = new HashMap<>();
         DBCollection cVC = diss.getCollection("columnVectorConsolidated");
         DBCursor curs = cVC.find();
@@ -111,15 +101,12 @@ public class CosineSimilarity {
                 Integer[] tempOne = new Integer[2];
                 tempOne[0] = alpha[i];
                 tempOne[1] = beta[i];
-                //Don't want to compare to self
-                if (i != alpha.length) {
-                    for (int j = i + 1; j < alpha.length; j++) {
+                for (int j = i; j < alpha.length; j++) {
                         Integer[] tempTwo = new Integer[2];
                         tempTwo[0] = alpha[j];
                         tempTwo[1] = beta[j];
                         runs = runs.add(BigInteger.ONE);
                         runningTotal = runningTotal.add(cosineSimilarity(tempOne, tempTwo));
-                    }
                 }
             }
             String subject = (String) result.get("subject");
@@ -163,7 +150,7 @@ public class CosineSimilarity {
      * compared to all others, excluding same task and same user, then time 2
      * etc.. group into a not group and same group, run through both
      */
-    public static void diffSim() throws Exception {
+    public void diffSim() throws Exception {
 
         DBCollection cVC = diss.getCollection("columnVectorConsolidated");
         /**
@@ -190,13 +177,13 @@ public class CosineSimilarity {
                 DBObject resultInner = cursInner.next();
                 String subjectInner = (String) resultInner.get("subject");
                 String taskInner = (String) resultInner.get("task");
-                BasicDBList a2 = (BasicDBList) result.get("alpha");
+                BasicDBList a2 = (BasicDBList) resultInner.get("alpha");
                 Integer[] alphaInner = new Integer[a2.size()];
                 a2.toArray(alphaInner);
-                BasicDBList b2 = (BasicDBList) result.get("beta");
+                BasicDBList b2 = (BasicDBList) resultInner.get("beta");
                 Integer[] betaInner = new Integer[b2.size()];
                 b2.toArray(betaInner);
-                if (!subjectInner.equals(subject) && taskInner.equals(task)) {
+                if (!subjectInner.equals(subject) & taskInner.equals(task)) {
                     //Number of comparisons done.
                     for (int i = 0; i < alpha.length; i++) {
                         Integer[] tempOne = new Integer[2];
@@ -225,6 +212,7 @@ public class CosineSimilarity {
             insert.put("value", val.toString());
             DBObject find = new BasicDBObject("subject", subject);
             find.put("task", task );
+            //If there's a task then update, otherwise create
             if(diffTask.find(find).hasNext()){
                 diffTask.update(find, insert);
             }else{
@@ -254,7 +242,7 @@ public class CosineSimilarity {
         }
     }
 
-    protected static BigDecimal cosineSimilarity(Integer[] a, Integer[] b) {
+    protected BigDecimal cosineSimilarity(Integer[] a, Integer[] b) {
         int size = a.length;
         BigInteger magA = BigInteger.ZERO;
         BigInteger magB = BigInteger.ZERO;
@@ -274,7 +262,7 @@ public class CosineSimilarity {
      * Consolidate the tasks into a single subject and task doc in the DB. Then
      * I can use in both self and diff easier.
      */
-    public static void consolidate() throws Exception {
+    public void consolidate() throws Exception {
         DBCollection cV = diss.getCollection("columnVector");
         /**
          * dbObjIdMap - To store aggregate key groupFields - To add fields to

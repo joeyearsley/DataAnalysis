@@ -15,6 +15,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.util.Scanner;
 import java.util.Set;
+
 /**
  *
  * @author josephyearsley
@@ -33,67 +34,36 @@ public class DataAnalysis {
          * constructor.
          */
 
-        //Define a process to start mongodb
-        Process start = null;
-        Process shut = null;
-        MongoClient mongoClient = new MongoClient("localhost", 27017);
-        
-        //try connecting to DB it will throw exception if not connected
+        commandHelpers helper = new commandHelpers();
+        helper.startMongo(DEV_MODE);
         try {
-            //will throw an exception if not connected
-            mongoClient.getDatabaseNames();
-            Set<String> diss = mongoClient.getDB("Dissertation").getCollectionNames();
-            if(diss.isEmpty()){
-                mongoClient.getDB("Dissertation").createCollection("empty", new BasicDBObject("created", true));
-            }
-        } catch (Exception e) {
-            System.err.println("Ensure MongoDB is running!");
-            //Only run automatically for me
-            if (DEV_MODE) {
-                start = Runtime.getRuntime().exec("/usr/local/bin/mongod -quiet");
-            }
-        }
-        try{
-        //Convert all data firstly
-        //DataConvert.convertCS();
-        //DataConvert.convertTW();
-        //Similarity.similarity();
+            DataConvert dataConvert = new DataConvert();
+
+            //Convert all data firstly
+            //DataConvert.convertCS();
+            dataConvert.convertTW();
+            //Similarity.similarity();
+
             CosineSimilarity c = new CosineSimilarity();
+            c.consolidate();
             c.selfSim();
             c.diffSim();
-            c.consolidate();
-        }catch(Exception mongoDB){
+            dtwSimilarity d = new dtwSimilarity();
+            d.selfSim();
+            d.diffSim();
+        } catch (Exception mongoDB) {
             System.err.println(mongoDB);
             System.err.println("Ensure MongoDB is running & try again!");
         }
-        //Close everything we opened
-        if (DEV_MODE) {
-            //Everything done so close DB
-            try {
-                //close mongodb
-                shut = Runtime.getRuntime().exec("/usr/local/bin/mongo");
-                OutputStream stdin = shut.getOutputStream();
-                InputStream stdout = shut.getInputStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(stdout));
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(stdin));
-                writer.write("use admin\n");
-                writer.flush();
-                writer.write("db.shutdownServer({timeoutSecs: 60})");
-                writer.write("\n");
-                writer.flush();
-                writer.write("exit\n");
-                writer.flush();
-                writer.close();
-                Scanner scanner = new Scanner(stdout);
-                while (scanner.hasNextLine()) {
-                    System.out.println(scanner.nextLine());
-                }
-                shut.destroy();
-            } catch (Exception shutdown) {
-                System.err.println(shutdown);
-            }
-            if(start != null) start.destroy();
-            mongoClient.close();
-        }
+        
+        helper.graphSimilarites("cosine Similarity", "eps", "Cosine Similarity", "cos", "4");
+        helper.graphSimilarites("dtw Similarity", "eps", "DTW Similarity", "dtw", "4");
+        helper.closeMongo(DEV_MODE);
+        /**
+         * CALL R SCRIPT WITH ARGUMENTS FOR ROUND TYPE AND FILENAME.
+         * Where type is dtw or cos.
+         * filename is name of plot graph.
+         * round is how much to round by.
+         */
     }
 }
