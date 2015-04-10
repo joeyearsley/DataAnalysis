@@ -1,8 +1,4 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package dataanalysis;
 
 
@@ -13,25 +9,31 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Task Object To Make analysis easier
+ * Task object to make cosine analysis easier.
  *
  * @author joe yearsley
  */
 public class Task {
 
-    BigDecimal taskTotal;
-    int taskNumber = 0;
     final Map<String, BigDecimal> taskKeeper = new HashMap<>();
 
-    //put latest big decimal in
+    /**
+     * To insert into hash map for each task. 
+     * @param s The task name.
+     * @param d The task value.
+     */
     void put(String s, BigDecimal d) {
-        BigDecimal temp = taskKeeper.get(s);
         if (taskKeeper.get(s) == null) {
             taskKeeper.put(s, BigDecimal.ZERO);
         }
         taskKeeper.put(s, d);
     }
 
+    /**
+     * Averaging function for hash map.
+     * @param i The number of comparisons it has done.
+     * @return The average value.
+     */
     BigDecimal getAverage(int i) {
         BigDecimal value = BigDecimal.ZERO;
         synchronized (taskKeeper) {

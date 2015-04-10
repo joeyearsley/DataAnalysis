@@ -1,8 +1,4 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package dataanalysis;
 
 import com.mongodb.AggregationOutput;
@@ -25,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- *
+ * Correctly works out the cosine similarity.
  * @author joe yearsley
  */
 public class CosineSimilarity {
@@ -35,51 +31,74 @@ public class CosineSimilarity {
     static DB diss;
     static DBCollection self;
     static DBCollection diff;
+    static DBCollection sA;
     static DBCollection selfTask;
     static DBCollection diffTask;
-
-    public CosineSimilarity() throws Exception {
+    static DBCollection sATask;
+    static Boolean wS = false;
+    static Boolean aT = false;
+    
+    /**
+     * Constructor to init the class and ensure everything is correctly setup.
+     * @param withSelf Do we want to compare to exactly the same data.
+     * @param allTasks Do we want to compare to all task types.
+     * @throws Exception Database isn't running.
+     */
+    public CosineSimilarity(String withSelf, String allTasks) throws Exception {
+        if (withSelf.length() > 0) {
+            wS = true;
+        }
+        if (allTasks.length() > 0) {
+            aT = true;
+        }
         fileLoc = "/Users/josephyearsley/Documents/University/Data/Converted/";
         mongoClient = new MongoClient("localhost", 27017);
         diss = mongoClient.getDB("Dissertation");
         Set<String> colNames = diss.getCollectionNames();
-        if (colNames.contains("selfTaskCosine")) {
-            selfTask = diss.getCollection("selfTaskCosine");
+        if (colNames.contains("selfTaskCosine" + withSelf)) {
+            selfTask = diss.getCollection("selfTaskCosine" + withSelf);
         } else {
-            selfTask = diss.createCollection("selfTaskCosine", new BasicDBObject());
+            selfTask = diss.createCollection("selfTaskCosine" + withSelf, new BasicDBObject());
         }
-        if (colNames.contains("diffTaskCosine")) {
-            diffTask = diss.getCollection("diffTaskCosine");
+        if (colNames.contains("diffTaskCosine" + allTasks)) {
+            diffTask = diss.getCollection("diffTaskCosine" + allTasks);
         } else {
-            diffTask = diss.createCollection("diffTaskCosine", new BasicDBObject());
+            diffTask = diss.createCollection("diffTaskCosine" + allTasks, new BasicDBObject());
         }
-        if (colNames.contains("selfCosine")) {
-            self = diss.getCollection("selfCosine");
+        if (colNames.contains("sATaskCosine")) {
+            sATask = diss.getCollection("sATaskCosine");
         } else {
-            self = diss.createCollection("selfCosine", new BasicDBObject());
+            sATask = diss.createCollection("sATaskCosine", new BasicDBObject());
         }
-        if (colNames.contains("diffCosine")) {
-            diff = diss.getCollection("diffCosine");
+        if (colNames.contains("selfCosine" + withSelf)) {
+            self = diss.getCollection("selfCosine" + withSelf);
         } else {
-            diff = diss.createCollection("diffCosine", new BasicDBObject());
+            self = diss.createCollection("selfCosine" + withSelf, new BasicDBObject());
+        }
+        if (colNames.contains("diffCosine" + allTasks)) {
+            diff = diss.getCollection("diffCosine" + allTasks);
+        } else {
+            diff = diss.createCollection("diffCosine" + allTasks, new BasicDBObject());
+        }
+        if (colNames.contains("sACosine")) {
+            sA = diss.getCollection("sACosine");
+        } else {
+            sA = diss.createCollection("sACosine", new BasicDBObject());
         }
     }
 
+    
     /**
-     * Calculate self similarity for each task for each user. Compare each
-     * timeTask to each other, divide by number of comparisons. Possibly group
-     * by name and task then run through group?
+     * Calculates cosine self similarity.
+     * @throws Exception Database isn't running.
      */
     public void selfSim() throws Exception {
 
-        /**
-         * dbObjIdMap - To store aggregate key groupFields - To add fields to
-         * output - set of DBObjects
-         */
+        //effectively the task hashmap from the incorrectly working class.
         HashMap<String, BigDecimal> keepTrack = new HashMap<>();
         DBCollection cVC = diss.getCollection("columnVectorConsolidated");
         DBCursor curs = cVC.find();
-        /**
+        /*
          * Run through output and do comparisons. Achieve this by going from
          * initial index to last element if index != last element Then inner
          * loop going from index+1 element to last array1.push(alpha[i],beta[i])
@@ -101,17 +120,28 @@ public class CosineSimilarity {
                 Integer[] tempOne = new Integer[2];
                 tempOne[0] = alpha[i];
                 tempOne[1] = beta[i];
-                for (int j = i; j < alpha.length; j++) {
+                //Increment i as don't want self comparisons, unless withSelf is set
+                if ((i + 1 != alpha.length) | wS) {
+                    //if wS set then it says compare to self task
+                    int x;
+                    if (wS) {
+                        x = i;
+                    } else {
+                        x = i + 1;
+                    }
+                    for (int j = x; j < alpha.length; j++) {
                         Integer[] tempTwo = new Integer[2];
                         tempTwo[0] = alpha[j];
                         tempTwo[1] = beta[j];
                         runs = runs.add(BigInteger.ONE);
                         runningTotal = runningTotal.add(cosineSimilarity(tempOne, tempTwo));
+                    }
                 }
             }
             String subject = (String) result.get("subject");
             String task = (String) result.get("task");
             BigDecimal value = BigDecimal.ZERO;
+            //if not null update
             if (keepTrack.get(subject) != null) {
                 value = keepTrack.get(subject);
             }
@@ -119,6 +149,7 @@ public class CosineSimilarity {
             keepTrack.put(subject, value.add(runningTotal.divide(new BigDecimal(runs), 200, RoundingMode.HALF_UP)));
             DBObject search = new BasicDBObject("subject", subject);
             search.put("task", task);
+            //only insert if not completed already.
             if (!selfTask.find(search)
                     .limit(1).hasNext()) {
                 DBObject insert = new BasicDBObject("subject", subject);
@@ -127,6 +158,7 @@ public class CosineSimilarity {
                 selfTask.insert(insert);
             }
         }
+        //Go through task keeper and average out.
         Iterator<Map.Entry<String, BigDecimal>> iterator = keepTrack.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<String, BigDecimal> entry = iterator.next();
@@ -145,18 +177,110 @@ public class CosineSimilarity {
         }
     }
 
+    
     /**
-     * Calculate difference similarity for each task for user. So time 1
-     * compared to all others, excluding same task and same user, then time 2
-     * etc.. group into a not group and same group, run through both
+     * Calculates the cross similarity between users.
+     * @throws Exception Database is not open.
      */
     public void diffSim() throws Exception {
 
         DBCollection cVC = diss.getCollection("columnVectorConsolidated");
-        /**
-         * dbObjIdMap - To store aggregate key groupFields - To add fields to
-         * output - set of DBObjects
-         */
+        DBCursor curs = cVC.find();
+        //To keep track of where we are upto.
+        HashMap<String, BigDecimal> keepTrack = new HashMap<>();
+        while (curs.hasNext()) {
+            DBObject result = curs.next();
+            BasicDBList a = (BasicDBList) result.get("alpha");
+            Integer[] alpha = new Integer[a.size()];
+            a.toArray(alpha);
+            BasicDBList b = (BasicDBList) result.get("beta");
+            Integer[] beta = new Integer[b.size()];
+            b.toArray(beta);
+            String subject = (String) result.get("subject");
+            String task = (String) result.get("task");
+            DBCollection cV = diss.getCollection("columnVectorConsolidated");
+            DBCursor cursInner = cV.find();
+            BigInteger runs = BigInteger.ZERO;
+            BigDecimal runningTotal = BigDecimal.ZERO;
+            while (cursInner.hasNext()) {
+                DBObject resultInner = cursInner.next();
+                String subjectInner = (String) resultInner.get("subject");
+                String taskInner = (String) resultInner.get("task");
+                BasicDBList a2 = (BasicDBList) resultInner.get("alpha");
+                Integer[] alphaInner = new Integer[a2.size()];
+                a2.toArray(alphaInner);
+                BasicDBList b2 = (BasicDBList) resultInner.get("beta");
+                Integer[] betaInner = new Integer[b2.size()];
+                b2.toArray(betaInner);
+                if (!subjectInner.equals(subject)) {
+                    //Compare to just tasks or all tasks
+                    if (taskInner.equals(task) | aT) {
+                        //Number of comparisons done.
+                        for (int i = 0; i < alpha.length; i++) {
+                            Integer[] tempOne = new Integer[2];
+                            tempOne[0] = alpha[i];
+                            tempOne[1] = beta[i];
+                            //Don't want to compare to self
+                            for (int j = 0; j < alpha.length; j++) {
+                                Integer[] tempTwo = new Integer[2];
+                                tempTwo[0] = alphaInner[j];
+                                tempTwo[1] = betaInner[j];
+                                runs = runs.add(BigInteger.ONE);
+                                runningTotal = runningTotal.add(cosineSimilarity(tempOne, tempTwo));
+                            }
+                        }
+                    }
+                }
+            }
+            BigDecimal value = BigDecimal.ZERO;
+            if (keepTrack.get(subject) != null) {
+                value = keepTrack.get(subject);
+            }
+            BigDecimal val = runningTotal.divide(new BigDecimal(runs), 200, RoundingMode.HALF_UP);
+            //for each subject divide by how many runs have been done.
+            keepTrack.put(subject, value.add(val));
+            DBObject insert = new BasicDBObject("subject", subject);
+            insert.put("task", task);
+            insert.put("value", val.toString());
+            DBObject find = new BasicDBObject("subject", subject);
+            find.put("task", task);
+            //If there's a task then update, otherwise create
+            if (diffTask.find(find).hasNext()) {
+                diffTask.update(find, insert);
+            } else {
+                diffTask.insert(insert);
+            }
+        }
+        //Go through collection for alpha, then another for loop for the other 
+        //files
+        Iterator<Map.Entry<String, BigDecimal>> iterator = keepTrack.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, BigDecimal> entry = iterator.next();
+            BigDecimal val = entry.getValue().divide(new BigDecimal(5), 200, RoundingMode.HALF_UP);
+            DBObject insert = new BasicDBObject("subject", entry.getKey());
+            insert.put("value", val.toString());
+            DBObject find = new BasicDBObject("subject", entry.getKey());
+            if (diff.find(find).hasNext()) {
+                diff.update(find, insert);
+            } else {
+                diff.insert(insert);
+            }
+            FileWriter writer = new FileWriter(fileLoc + "/Similarity/diffSim/" + entry.getKey() + ".csv");
+            try {
+                writer.write(val.toString());
+            } finally {
+                writer.close();
+            }
+        }
+    }
+
+    /**
+     * Compares to all tasks of the user not just the same task type.
+     * @throws Exception Database is not open.
+     */
+    public void selfSimAllSame() throws Exception {
+
+        DBCollection cVC = diss.getCollection("columnVectorConsolidated");
         DBCursor curs = cVC.find();
         HashMap<String, BigDecimal> keepTrack = new HashMap<>();
         while (curs.hasNext()) {
@@ -183,7 +307,7 @@ public class CosineSimilarity {
                 BasicDBList b2 = (BasicDBList) resultInner.get("beta");
                 Integer[] betaInner = new Integer[b2.size()];
                 b2.toArray(betaInner);
-                if (!subjectInner.equals(subject) & taskInner.equals(task)) {
+                if (subjectInner.equals(subject)) {
                     //Number of comparisons done.
                     for (int i = 0; i < alpha.length; i++) {
                         Integer[] tempOne = new Integer[2];
@@ -196,6 +320,7 @@ public class CosineSimilarity {
                             tempTwo[1] = betaInner[j];
                             runs = runs.add(BigInteger.ONE);
                             runningTotal = runningTotal.add(cosineSimilarity(tempOne, tempTwo));
+
                         }
                     }
                 }
@@ -211,12 +336,12 @@ public class CosineSimilarity {
             insert.put("task", task);
             insert.put("value", val.toString());
             DBObject find = new BasicDBObject("subject", subject);
-            find.put("task", task );
+            find.put("task", task);
             //If there's a task then update, otherwise create
-            if(diffTask.find(find).hasNext()){
-                diffTask.update(find, insert);
-            }else{
-                diffTask.insert(insert);
+            if (sATask.find(find).hasNext()) {
+                sATask.update(find, insert);
+            } else {
+                sATask.insert(insert);
             }
         }
         //Go through collection for alpha, then another for loop for the other 
@@ -228,20 +353,20 @@ public class CosineSimilarity {
             DBObject insert = new BasicDBObject("subject", entry.getKey());
             insert.put("value", val.toString());
             DBObject find = new BasicDBObject("subject", entry.getKey());
-            if(diff.find(find).hasNext()){
-                diff.update(find, insert);
-            }else{
-                diff.insert(insert);
-            }
-            FileWriter writer = new FileWriter(fileLoc + "/Similarity/diffSim/" + entry.getKey() + ".csv");
-            try {
-                writer.write(val.toString());
-            } finally {
-                writer.close();
+            if (sA.find(find).hasNext()) {
+                sA.update(find, insert);
+            } else {
+                sA.insert(insert);
             }
         }
     }
 
+    /**
+     * Calculates the cosine similarity.
+     * @param a The array of integers for subject A
+     * @param b The array of integers for subject B
+     * @return Cosine similarity
+     */
     protected BigDecimal cosineSimilarity(Integer[] a, Integer[] b) {
         int size = a.length;
         BigInteger magA = BigInteger.ZERO;
@@ -259,12 +384,12 @@ public class CosineSimilarity {
     }
 
     /**
-     * Consolidate the tasks into a single subject and task doc in the DB. Then
-     * I can use in both self and diff easier.
+     * Consolidates the tasks into a single subject and task document in the DB.
+     * @throws Exception Database isn't open.
      */
     public void consolidate() throws Exception {
         DBCollection cV = diss.getCollection("columnVector");
-        /**
+        /*
          * dbObjIdMap - To store aggregate key groupFields - To add fields to
          * output - set of DBObjects
          */

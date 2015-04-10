@@ -1,13 +1,9 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 
 package dataanalysis;
 
 /**
- *
+ * To help with DTW analysis.
+ * Simply stores a alpha and beta value in first and second.
  * @author joe yearsley
  */
 public class Pair {

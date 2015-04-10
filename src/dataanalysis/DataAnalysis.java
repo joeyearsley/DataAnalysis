@@ -1,69 +1,64 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package dataanalysis;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.MongoClient;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.util.Scanner;
-import java.util.Set;
-
 /**
- *
+ * Main class to bring together the project.
  * @author josephyearsley
  */
 public class DataAnalysis {
 
     /**
+     * Brings all the classes together to get a end result fo analysis
      * @param args the command line arguments
      */
     public static void main(String[] args) throws Exception {
         //To auto start mongodb
         final Boolean DEV_MODE = true;
-        /**
-         * Implement DB, checking if not there add, same for docs. Only do
-         * mongoClient stuff if in DEV mode, add dev Mode to others as
-         * constructor.
-         */
-
-        commandHelpers helper = new commandHelpers();
+        
+        CommandHelpers helper = new CommandHelpers();
+        //Check if DB is open and start if in dev mode
         helper.startMongo(DEV_MODE);
         try {
             DataConvert dataConvert = new DataConvert();
 
             //Convert all data firstly
-            //DataConvert.convertCS();
+            dataConvert.convertCS();
             dataConvert.convertTW();
-            //Similarity.similarity();
-
-            CosineSimilarity c = new CosineSimilarity();
+            Similarity s = new Similarity();
+            s.similarityCalc();
+            CosineSimilarity c = new CosineSimilarity("","");
             c.consolidate();
             c.selfSim();
             c.diffSim();
-            dtwSimilarity d = new dtwSimilarity();
+            //Do self comparison of all tasks in subject
+            c.selfSimAllSame();
+            //New Cos to compare to self i.e task1,task1 and to say do diff between all tasks 
+            c = new CosineSimilarity("withSelf","allTasks");
+            c.selfSim();
+            c.diffSim();
+            //Standard DTW
+            DtwSimilarity d = new DtwSimilarity("","","");
             d.selfSim();
             d.diffSim();
+            //New DTW to compare to self i.e task1,task1 and to say do diff between all tasks 
+            d = new DtwSimilarity("withSelf","allTasks","");
+            d.selfSim();
+            d.diffSim();
+            //New DTW Compare all Tasks to just subject not task defined
+            d = new DtwSimilarity("","","sAT");
+            d.selfSim();
         } catch (Exception mongoDB) {
             System.err.println(mongoDB);
             System.err.println("Ensure MongoDB is running & try again!");
         }
         
-        helper.graphSimilarites("cosine Similarity", "eps", "Cosine Similarity", "cos", "4");
-        helper.graphSimilarites("dtw Similarity", "eps", "DTW Similarity", "dtw", "4");
+        //Call Rscript to plot these graphs
+        helper.graphSimilarites("Cosine Similarity", "eps", "Cosine Similarity", "cos", "4");
+        helper.graphSimilarites("Wrong Cosine Similarity", "eps", "Wrong Cosine Similarity", "wcos", "4");
+        helper.graphSimilarites("Dtw Similarity", "eps", "DTW Similarity", "dtw", "10");
+        helper.graphSimilarites("Wrong Dtw Similarity", "eps", "Wrong DTW Similarity", "wdtw", "10");
+        //Close everything up
         helper.closeMongo(DEV_MODE);
-        /**
-         * CALL R SCRIPT WITH ARGUMENTS FOR ROUND TYPE AND FILENAME.
-         * Where type is dtw or cos.
-         * filename is name of plot graph.
-         * round is how much to round by.
-         */
+        
     }
 }

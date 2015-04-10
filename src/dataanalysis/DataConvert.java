@@ -1,8 +1,4 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package dataanalysis;
 
 import au.com.bytecode.opencsv.CSVReader;
@@ -20,7 +16,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- *
+ * Converts all the data from CSV to mongo documents and files.
  * @author joe yearsley
  */
 public class DataConvert {
@@ -29,12 +25,20 @@ public class DataConvert {
     static MongoClient mongoClient;
     static DB diss;
 
+    /**
+     * Sets up the instance
+     * @throws Exception if database isn't open
+     */
     public DataConvert() throws Exception {
         fileLoc = "/Users/josephyearsley/Documents/University/Data/";
         mongoClient = new MongoClient("localhost", 27017);
         diss = mongoClient.getDB("Dissertation");
     }
 
+    /**
+     * Converts to a cosine similarity compatible file.
+     * @throws Exception Writer has an issue.
+     */
     public void convertCS() throws Exception {
         CSVReader reader = null;
         int alpha = 0;
@@ -43,17 +47,21 @@ public class DataConvert {
         int betaAvrg = 0;
         int alphaAvrg = 0;
         DBCollection cV = null;
-        Set<String> colNames = diss.getCollectionNames();
-        if (colNames.contains("columnVector")) {
-            cV = diss.getCollection("columnVector");
-        } else {
-            cV = diss.createCollection("columnVector", new BasicDBObject());
+        try{
+            Set<String> colNames = diss.getCollectionNames();
+            //Create collection if it doesn't exist
+            if (colNames.contains("columnVector")) {
+                cV = diss.getCollection("columnVector");
+            } else {
+                cV = diss.createCollection("columnVector", new BasicDBObject());
+            }
+        }catch(Exception noDB){
+            System.err.println(noDB);
         }
-
-        /**
+        /*
          * Loop through data directory, check its not empty. Go through each
          * file, ensuring its not hidden or directory. Then check if its already
-         * converted, if not then convert and write
+         * converted, if not then convert and write/insert.
          */
         File dir = new File(fileLoc);
         File[] directoryListing = dir.listFiles();
@@ -98,11 +106,12 @@ public class DataConvert {
                             alphaAvrg = alpha / (numberOfLines * 2);
                             betaAvrg = beta / (numberOfLines * 2);
                         } catch (Exception e) {
+                            //For debuging
                             e.printStackTrace();
                         } finally {
-                            /**
-                             * Close Reader, make new file Write the string
-                             * values Close the writer
+                            /*
+                             * Close reader, make new file write the string
+                             * values. Close the writer, insert into DB.
                              */
                             reader.close();
                             FileWriter writer = new FileWriter(fileLoc + "Converted/" + name + "cv.csv");
@@ -117,21 +126,25 @@ public class DataConvert {
                             file.append("betaAvrg", betaAvrg);
                             cV.insert(file);
                         }
-                    } else {
-                        //System.out.println(ex + " EXISTS");
                     }
                 }
             }
         }
+        //Close up the client connection to preserve memory.
         mongoClient.close();
     }
 
+    /**
+     * Convert to a TimeWarping compatible file.
+     * @throws IOException Writer has encountered a problem.
+     */
     public void convertTW() throws IOException {
         CSVReader reader = null;
         double alpha = 0;
         double beta = 0;
         DBCollection tW = null;
         try {
+            //Make colletion if it doesn't exist.
             Set<String> colNames = diss.getCollectionNames();
             if (colNames.contains("timeWarping")) {
                 tW = diss.getCollection("timeWarping");
@@ -141,7 +154,7 @@ public class DataConvert {
         } catch (Exception noDB) {
             System.err.println(noDB);
         }
-        /**
+        /*
          * Loop through data directory, check its not empty. Go through each
          * file, ensuring its not hidden or directory. Then check if its already
          * converted, if not then convert and write
@@ -187,23 +200,23 @@ public class DataConvert {
                                 alpha = Double.valueOf(nextLine[1]) + Double.valueOf(nextLine[2]);
                                 beta = Double.valueOf(nextLine[3]) + Double.valueOf(nextLine[4]);
                                 //Get average for that time between high and low
-                                String av = String.valueOf(alpha / 2);
-                                String bv = String.valueOf(beta / 2);
-                                
-                                
+                                String av = String.valueOf((alpha+'d' / 2));
+                                String bv = String.valueOf((beta+'d' / 2));
                                 alphaList.add(alpha / 2);
                                 betaList.add(beta / 2);
                                 
                                 writer.write(av);
                                 writer.write(',');
                                 writer.write(bv);
+                                writer.write(',');
                             }
                         } catch (Exception e) {
+                            //For debugging
                             e.printStackTrace();
                         } finally {
-                            /**
-                             * Close Reader, make new file Write the string
-                             * values Close the writer
+                            /*
+                             * Close reader, make new file write the string
+                             * values. Close the writer, insert into DB.
                              */
                             reader.close();
                             writer.flush();
@@ -212,12 +225,11 @@ public class DataConvert {
                             file.append("beta", betaList);
                             tW.insert(file);
                         }
-                    } else {
-                        //System.out.println(ex + " EXISTS");
                     }
                 }
             }
         }
+        //Close the client to ensure memory preservation.
         mongoClient.close();
     }
 

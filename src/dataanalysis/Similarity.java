@@ -1,11 +1,12 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package dataanalysis;
 
 import au.com.bytecode.opencsv.CSVReader;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
+import com.mongodb.MongoClient;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -20,31 +21,75 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import net.sf.javaml.core.DenseInstance;
 import net.sf.javaml.core.Instance;
 import net.sf.javaml.distance.dtw.DTWSimilarity;
-import net.sf.javaml.distance.fastdtw.dtw.DTW;
-import net.sf.javaml.distance.fastdtw.timeseries.TimeSeries;
 import org.apache.commons.lang3.ArrayUtils;
 
 /**
- *
+ * The initial class to do analysis, which was wrong.
  * @author joe yearsley
  */
 public class Similarity {
-
+    
+    //Create synced hashmaps
     static Map<String, Task> selfSim = Collections.synchronizedMap(new HashMap<String, Task>());
     static Map<String, Task> diffSim = Collections.synchronizedMap(new HashMap<String, Task>());
     static Map<String, Pair> selfSimDTW = Collections.synchronizedMap(new HashMap<String, Pair>());
     static Map<String, Pair> diffSimDTW = Collections.synchronizedMap(new HashMap<String, Pair>());
 
+    static DBCollection selfCosineWrong;
+    static DBCollection diffCosineWrong;
+    static DBCollection selfDTWWrong;
+    static DBCollection diffDTWWrong;
+    static MongoClient mongoClient = null;
+    static DB diss;
+    
     static String fileLoc = "/Users/josephyearsley/Documents/University/Data/Converted/";
-
-    static void similarity() {
-        //FileWriter writer;
+    static String fileLoc2 = "/Users/josephyearsley/Documents/University/Data/";
+    
+    /**
+     * Constructor to init everything.
+     * if the collection doesn't exist, make it.
+     * @throws Exception Database isn't found.
+     */
+    public Similarity() throws Exception {
+        fileLoc = "/Users/josephyearsley/Documents/University/Data/Converted/";
+        mongoClient = new MongoClient("localhost", 27017);
+        diss = mongoClient.getDB("Dissertation");
+        Set<String> colNames = diss.getCollectionNames();
+        if (colNames.contains("selfCosineWrong")) {
+            selfCosineWrong= diss.getCollection("selfCosineWrong");
+        } else {
+            selfCosineWrong = diss.createCollection("selfCosineWrong", new BasicDBObject());
+        }
+        if (colNames.contains("diffCosineWrong")) {
+            diffCosineWrong = diss.getCollection("diffCosineWrong");
+        } else {
+            diffCosineWrong = diss.createCollection("diffCosineWrong", new BasicDBObject());
+        }
+        if (colNames.contains("selfDTWWrong")) {
+            selfDTWWrong= diss.getCollection("selfDTWWrong");
+        } else {
+            selfDTWWrong = diss.createCollection("selfDTWWrong", new BasicDBObject());
+        }
+        if (colNames.contains("diffDTWWrong")) {
+            diffDTWWrong = diss.getCollection("diffDTWWrong");
+        } else {
+            diffDTWWrong = diss.createCollection("diffDTWWrong", new BasicDBObject());
+        }
+    }
+    
+    /**
+     * Runs all calculations.
+     */
+    void similarityCalc() {
         try {
+
             calcSim();
             DTWSim();
+
             //Go through all entries and work out average.
             //Has to be synchronized to ensure no data overlaps
             synchronized (diffSim) {
@@ -53,9 +98,18 @@ public class Similarity {
                     Map.Entry<String, Task> entry = iterator.next();
                     //each task has N-1 * 25 tasks
                     BigDecimal value = entry.getValue().getAverage((diffSim.size() - 1) * 25);
-                    FileWriter writer = new FileWriter(fileLoc + "/Similarity/diffSim/" + entry.getKey() + ".csv");
+                    value = value.divide(new BigDecimal(5), 200, RoundingMode.HALF_UP);
+                    DBObject insert = new BasicDBObject("subject", entry.getKey());
+                    insert.put("value", value.toString());
+                    DBObject find = new BasicDBObject("subject", entry.getKey());
+                    if (diffCosineWrong.find(find).hasNext()) {
+                        diffCosineWrong.update(find, insert);
+                    } else {
+                        diffCosineWrong.insert(insert);
+                    }
+                    FileWriter writer = new FileWriter(fileLoc2 + "/Similarity/diffSim/" + entry.getKey() + ".csv");
                     //already averaged out each individual file, now to average out every file added
-                    writer.write(value.divide(new BigDecimal(5), 200, RoundingMode.HALF_UP).toString());
+                    writer.write(value.toString());
                     writer.close();
                 }
             }
@@ -66,10 +120,19 @@ public class Similarity {
                 while (iterator.hasNext()) {
                     Map.Entry<String, Task> entry = iterator.next();
                     BigDecimal value = entry.getValue().getAverage(25);
-                    FileWriter writer = new FileWriter(fileLoc + "/Similarity/selfSim/" + entry.getKey() + ".csv"); 
+                    value = value.divide(new BigDecimal(5), 200, RoundingMode.HALF_UP);
+                    DBObject insert = new BasicDBObject("subject", entry.getKey());
+                    insert.put("value", value.toString());
+                    DBObject find = new BasicDBObject("subject", entry.getKey());
+                    if (selfCosineWrong.find(find).hasNext()) {
+                        selfCosineWrong.update(find, insert);
+                    } else {
+                        selfCosineWrong.insert(insert);
+                    }
+                    FileWriter writer = new FileWriter(fileLoc2 + "/Similarity/selfSim/" + entry.getKey() + ".csv");
                     try {
-                        writer.write(value.divide(new BigDecimal(5), 200, RoundingMode.HALF_UP).toString());
-                    }finally{
+                        writer.write(value.toString());
+                    } finally {
                         writer.close();
                     }
                 }
@@ -79,9 +142,17 @@ public class Similarity {
                 System.out.println(selfSimDTW);
                 while (iterator.hasNext()) {
                     Map.Entry<String, Pair> entry = iterator.next();
-                    double alpha = entry.getValue().first / (25*5);
-                    double beta = entry.getValue().first / (25*5);
-                    FileWriter writer = new FileWriter(fileLoc + "/TimeWarping/Similarity/selfSim/" + entry.getKey() + ".csv");
+                    double alpha = entry.getValue().first / (25 * 5);
+                    double beta = entry.getValue().first / (25 * 5);
+                    DBObject insert = new BasicDBObject("subject", entry.getKey());
+                    insert.put("value", ((alpha+beta)/2) );
+                    DBObject find = new BasicDBObject("subject", entry.getKey());
+                    if (selfDTWWrong.find(find).hasNext()) {
+                        selfDTWWrong.update(find, insert);
+                    } else {
+                        selfDTWWrong.insert(insert);
+                    }
+                    FileWriter writer = new FileWriter(fileLoc2 + "/TimeWarping/Similarity/selfSim/" + entry.getKey() + ".csv");
                     writer.write(String.valueOf(alpha) + ',' + beta);
                     writer.close();
                 }
@@ -93,12 +164,20 @@ public class Similarity {
                     Map.Entry<String, Pair> entry = iterator.next();
                     double alpha = entry.getValue().first / ((diffSimDTW.size() - 1) * 25 * 5);
                     double beta = entry.getValue().first / ((diffSimDTW.size() - 1) * 25 * 5);
-                    FileWriter writer = new FileWriter(fileLoc + "/TimeWarping/Similarity/diffSim/" + entry.getKey() + ".csv");
+                    DBObject insert = new BasicDBObject("subject", entry.getKey());
+                    insert.put("value", ((alpha+beta)/2) );
+                    DBObject find = new BasicDBObject("subject", entry.getKey());
+                    if (diffDTWWrong.find(find).hasNext()) {
+                        diffDTWWrong.update(find, insert);
+                    } else {
+                        diffDTWWrong.insert(insert);
+                    }
+                    FileWriter writer = new FileWriter(fileLoc2 + "/TimeWarping/Similarity/diffSim/" + entry.getKey() + ".csv");
                     writer.write(String.valueOf(alpha) + ',' + beta);
                     writer.close();
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println(e);
         }
     }
@@ -129,12 +208,16 @@ public class Similarity {
         return x;
     }
 
-    //Just a basic example of dtw for one person, need to expand still
+    /**
+     * Calculates the DTW similarities.
+     * @throws FileNotFoundException The file doesn't exist.
+     * @throws IOException Error in creation of the file.
+     */
     static void DTWSim() throws FileNotFoundException, IOException {
         DTWSimilarity d = new DTWSimilarity();
         File dir = new File("/Users/josephyearsley/Documents/University/Data/TimeWarping/");
         File[] directoryListing = dir.listFiles();
-        /**
+        /*
          * Split into persons name, test name, and test attempt Then go through
          * comparing similarities to each other. Try not to repeat for loops,
          * i.e. don't over compare! Once done output all similarities Do self
@@ -195,34 +278,42 @@ public class Similarity {
                                 tempCheckSelf.first += d.measure(i1Alpha, i2Alpha);
                                 tempCheckSelf.second += d.measure(i1Beta, i2Beta);
                                 selfSimDTW.put(checkFirst + "" + checkSecond, tempCheckSelf);
-                            }else{
+                            } else {
                                 tempCheckDiff.first += d.measure(i1Alpha, i2Alpha);
                                 tempCheckDiff.second += d.measure(i1Beta, i2Beta);
                                 diffSimDTW.put(checkFirst + "" + checkSecond, tempCheckSelf);
                             }
+
                         }
                         reader.close();
+
                     }
                     reader.close();
                 }
+
             }
         }
+
     }
 
+    /**
+     * Calculates the cosine similarities.
+     * @throws IOException Something has gone wrong whilst writing the file.
+     */
     public static void calcSim() throws IOException {
         CSVReader reader = null;
         BigDecimal runningAverageSelf = BigDecimal.ZERO;
         BigDecimal runningAverageDiff = BigDecimal.ZERO;
         String[] signal1 = new String[2];
         String[] signal2 = new String[2];
-        /**
+        /*
          * Loop through data directory, check its not empty. Go through each
          * file, ensuring its not hidden or directory. Then check if its already
          * converted, if not then convert and write
          */
         File dir = new File(fileLoc);
         File[] directoryListing = dir.listFiles();
-        /**
+        /*
          * Split into persons name, test name, and test attempt Then go through
          * comparing similarities to each other. Try not to repeat for loops,
          * i.e. don't over compare! Once done output all similarities Do self
@@ -269,7 +360,7 @@ public class Similarity {
                     //Go through everything else, making sure not same fileName
                     for (File child2 : directoryListing) {
                         //if Not a directory or hidden
-                        if (!child2.isHidden() & !child2.isDirectory() & !child.getName().equals(child2.getName())) {
+                        if (!child2.isHidden() && !child2.isDirectory() && !child.getName().equals(child2.getName())) {
                             //Get child 2 Name
                             char first = child2.getName().charAt(0);
                             char second = child2.getName().charAt(1);
@@ -278,19 +369,18 @@ public class Similarity {
                             reader = new CSVReader(new FileReader(child2), ',');
                             signal2[0] = reader.readNext()[0];
                             signal2[1] = reader.readNext()[0];
-                            if (!temp.exists()) {
-                                //Same first name
-                                if (first == checkFirst & second == checkSecond) {
+                            //Same first name
+                                if (first == checkFirst && second == checkSecond) {
                                     //now check that tasks are same, so only checking against same tasks
-                                    if (taskFirst == tFirst & taskSecond == tSecond) {
+                                    if (taskFirst == tFirst && taskSecond == tSecond) {
                                         runningAverageSelf = runningAverageSelf.add(cosineSim(signal1, signal2));
                                     }
                                 }
-                            }
+                            
                             //Different Names
-                            if (first != checkFirst & second != checkSecond) {
+                            if (first != checkFirst && second != checkSecond) {
                                 //now check that tasks are same, so only checking against same tasks
-                                if (taskFirst == tFirst & taskSecond == tSecond) {
+                                if (taskFirst == tFirst && taskSecond == tSecond) {
                                     runningAverageDiff = runningAverageDiff.add(cosineSim(signal1, signal2));
                                 }
                             }
