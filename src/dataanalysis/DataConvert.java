@@ -30,7 +30,13 @@ public class DataConvert {
      * @throws Exception if database isn't open
      */
     public DataConvert() throws Exception {
-        fileLoc = "/Users/josephyearsley/Documents/University/Data/";
+        fileLoc = "../Data/";
+        if(!new File(fileLoc + "Converted/Cosine/").exists()){
+            new File(fileLoc + "Converted/Cosine/").mkdirs();
+        }
+        if(!new File(fileLoc + "Converted/TimeWarping/").exists()){
+            new File(fileLoc + "Converted/TimeWarping/").mkdirs();
+        }
         mongoClient = new MongoClient("localhost", 27017);
         diss = mongoClient.getDB("Dissertation");
     }
@@ -51,9 +57,9 @@ public class DataConvert {
             Set<String> colNames = diss.getCollectionNames();
             //Create collection if it doesn't exist
             if (colNames.contains("columnVector")) {
-                cV = diss.getCollection("columnVector");
+              cV = diss.getCollection("columnVector");
             } else {
-                cV = diss.createCollection("columnVector", new BasicDBObject());
+              cV = diss.createCollection("columnVector", new BasicDBObject());
             }
         }catch(Exception noDB){
             System.err.println(noDB);
@@ -79,13 +85,12 @@ public class DataConvert {
                     String task = name.charAt(2) + "" + name.charAt(3);
                     int timesDone = Integer.parseInt(name.charAt(4) + "");
 
-                    //Check that the file hasn't already been converted
-                    DBCursor curs = null;
                     //Find task file
                     BasicDBObject file = new BasicDBObject("subject", subject)
                             .append("task", task)
                             .append("timesDone", timesDone);
-                    curs = cV.find(file).limit(1);
+                    //Check that the file hasn't already been converted
+                    DBCursor curs = cV.find(file).limit(1);
                     //no file returned
                     if (!curs.hasNext()) {
                         // Do something with child
@@ -94,7 +99,7 @@ public class DataConvert {
                             reader = new CSVReader(new FileReader(child), ',');
                             String[] nextLine;
                             //Skip first line
-                            nextLine = reader.readNext();
+                            reader.readNext();
                             while ((nextLine = reader.readNext()) != null) {
                                 //increment the number of lines
                                 numberOfLines++;
@@ -105,7 +110,7 @@ public class DataConvert {
                             //Calc the avrgs
                             alphaAvrg = alpha / (numberOfLines * 2);
                             betaAvrg = beta / (numberOfLines * 2);
-                        } catch (Exception e) {
+                        } catch (IOException | NumberFormatException e) {
                             //For debuging
                             e.printStackTrace();
                         } finally {
@@ -114,7 +119,7 @@ public class DataConvert {
                              * values. Close the writer, insert into DB.
                              */
                             reader.close();
-                            FileWriter writer = new FileWriter(fileLoc + "Converted/" + name + "cv.csv");
+                            FileWriter writer = new FileWriter(fileLoc + "Converted/Cosine/" + name + ".csv");
                             String av = String.valueOf(alphaAvrg);
                             String bv = String.valueOf(betaAvrg);
                             writer.write(av);
@@ -130,8 +135,6 @@ public class DataConvert {
                 }
             }
         }
-        //Close up the client connection to preserve memory.
-        mongoClient.close();
     }
 
     /**
@@ -175,20 +178,19 @@ public class DataConvert {
                     String task = name.charAt(2) + "" + name.charAt(3);
                     int timesDone = Integer.parseInt(name.charAt(4) + "");
 
-                    //Check that the file hasn't already been converted
-                    DBCursor curs = null;
                     //Find task file
                     BasicDBObject file = new BasicDBObject("subject", subject)
                             .append("task", task)
                             .append("timesDone", timesDone);
-                    curs = tW.find(file).limit(1);
+                    //Check that the file hasn't already been converted
+                    DBCursor curs = tW.find(file).limit(1);
                     //Alpha
                     List<Double> alphaList = new ArrayList<>();
                     //Beta
                     List<Double> betaList = new ArrayList<>();
                     if (!curs.hasNext()) {
                         // Do something with child
-                        FileWriter writer = new FileWriter(fileLoc + "TimeWarping/" + name + ".csv");
+                        FileWriter writer = new FileWriter(fileLoc + "Converted/TimeWarping/" + name + ".csv");
                         try {
                             //Get the CSVReader instance with specifying the delimiter to be used
                             reader = new CSVReader(new FileReader(child), ',');
@@ -210,7 +212,7 @@ public class DataConvert {
                                 writer.write(bv);
                                 writer.write(',');
                             }
-                        } catch (Exception e) {
+                        } catch (IOException | NumberFormatException e) {
                             //For debugging
                             e.printStackTrace();
                         } finally {
@@ -229,6 +231,12 @@ public class DataConvert {
                 }
             }
         }
+    }
+    
+    /**
+     * Closes the mongo connection to save memory.
+     */
+    public void closeMongoClient(){
         //Close the client to ensure memory preservation.
         mongoClient.close();
     }

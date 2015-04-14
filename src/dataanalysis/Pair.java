@@ -8,7 +8,7 @@ package dataanalysis;
  */
 public class Pair {
 
-    double first,second;
+    public double first,second;
     
     public Pair(double x, double y){
         first = x;

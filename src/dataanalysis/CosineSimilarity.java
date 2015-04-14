@@ -9,6 +9,7 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
+import java.io.File;
 import java.io.FileWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -51,7 +52,13 @@ public class CosineSimilarity {
         if (allTasks.length() > 0) {
             aT = true;
         }
-        fileLoc = "/Users/josephyearsley/Documents/University/Data/Converted/";
+        fileLoc = "../Data/Converted/Cosine/";
+        if(!new File(fileLoc + "Similarity/selfSim/").exists()){
+            new File(fileLoc + "Similarity/selfSim/").mkdirs();
+        }
+        if(!new File(fileLoc + "Similarity/diffSim/").exists()){
+            new File(fileLoc + "Similarity/diffSim/").mkdirs();
+        }
         mongoClient = new MongoClient("localhost", 27017);
         diss = mongoClient.getDB("Dissertation");
         Set<String> colNames = diss.getCollectionNames();
@@ -367,7 +374,7 @@ public class CosineSimilarity {
      * @param b The array of integers for subject B
      * @return Cosine similarity
      */
-    protected BigDecimal cosineSimilarity(Integer[] a, Integer[] b) {
+    public BigDecimal cosineSimilarity(Integer[] a, Integer[] b) {
         int size = a.length;
         BigInteger magA = BigInteger.ZERO;
         BigInteger magB = BigInteger.ZERO;
@@ -419,5 +426,13 @@ public class CosineSimilarity {
                 cVC.insert(subject);
             }
         }
+    }
+    
+    /**
+     * Closes the mongo connection to save memory.
+     */
+    public void closeMongoClient(){
+        //Close the client to ensure memory preservation.
+        mongoClient.close();
     }
 }

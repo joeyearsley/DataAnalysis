@@ -46,8 +46,7 @@ public class Similarity {
     static MongoClient mongoClient = null;
     static DB diss;
     
-    static String fileLoc = "/Users/josephyearsley/Documents/University/Data/Converted/";
-    static String fileLoc2 = "/Users/josephyearsley/Documents/University/Data/";
+    final static String FILE_LOC = "../Data/Converted/Wrong/";
     
     /**
      * Constructor to init everything.
@@ -55,9 +54,20 @@ public class Similarity {
      * @throws Exception Database isn't found.
      */
     public Similarity() throws Exception {
-        fileLoc = "/Users/josephyearsley/Documents/University/Data/Converted/";
         mongoClient = new MongoClient("localhost", 27017);
         diss = mongoClient.getDB("Dissertation");
+        if(!new File(FILE_LOC + "Cosine/Similarity/selfSim/").exists()){
+            new File(FILE_LOC + "Cosine/Similarity/selfSim/").mkdirs();
+        }
+        if(!new File(FILE_LOC + "Cosine/Similarity/diffSim/").exists()){
+            new File(FILE_LOC + "Cosine/Similarity/diffSim/").mkdirs();
+        }
+        if(!new File(FILE_LOC + "TimeWarping/Similarity/selfSim/").exists()){
+            new File(FILE_LOC + "TimeWarping/Similarity/selfSim/").mkdirs();
+        }
+        if(!new File(FILE_LOC + "TimeWarping/Similarity/diffSim/").exists()){
+            new File(FILE_LOC + "TimeWarping/Similarity/diffSim/").mkdirs();
+        }
         Set<String> colNames = diss.getCollectionNames();
         if (colNames.contains("selfCosineWrong")) {
             selfCosineWrong= diss.getCollection("selfCosineWrong");
@@ -84,7 +94,7 @@ public class Similarity {
     /**
      * Runs all calculations.
      */
-    void similarityCalc() {
+    public void similarityCalc() {
         try {
 
             calcSim();
@@ -107,7 +117,7 @@ public class Similarity {
                     } else {
                         diffCosineWrong.insert(insert);
                     }
-                    FileWriter writer = new FileWriter(fileLoc2 + "/Similarity/diffSim/" + entry.getKey() + ".csv");
+                    FileWriter writer = new FileWriter(FILE_LOC + "Cosine/Similarity/diffSim/" + entry.getKey() + ".csv");
                     //already averaged out each individual file, now to average out every file added
                     writer.write(value.toString());
                     writer.close();
@@ -129,7 +139,7 @@ public class Similarity {
                     } else {
                         selfCosineWrong.insert(insert);
                     }
-                    FileWriter writer = new FileWriter(fileLoc2 + "/Similarity/selfSim/" + entry.getKey() + ".csv");
+                    FileWriter writer = new FileWriter(FILE_LOC + "Cosine/Similarity/selfSim/" + entry.getKey() + ".csv");
                     try {
                         writer.write(value.toString());
                     } finally {
@@ -139,7 +149,6 @@ public class Similarity {
             }
             synchronized (selfSimDTW) {
                 Iterator<Map.Entry<String, Pair>> iterator = selfSimDTW.entrySet().iterator();
-                System.out.println(selfSimDTW);
                 while (iterator.hasNext()) {
                     Map.Entry<String, Pair> entry = iterator.next();
                     double alpha = entry.getValue().first / (25 * 5);
@@ -152,14 +161,13 @@ public class Similarity {
                     } else {
                         selfDTWWrong.insert(insert);
                     }
-                    FileWriter writer = new FileWriter(fileLoc2 + "/TimeWarping/Similarity/selfSim/" + entry.getKey() + ".csv");
+                    FileWriter writer = new FileWriter(FILE_LOC + "/TimeWarping/Similarity/selfSim/" + entry.getKey() + ".csv");
                     writer.write(String.valueOf(alpha) + ',' + beta);
                     writer.close();
                 }
             }
             synchronized (diffSimDTW) {
                 Iterator<Map.Entry<String, Pair>> iterator = diffSimDTW.entrySet().iterator();
-                System.out.println(diffSimDTW);
                 while (iterator.hasNext()) {
                     Map.Entry<String, Pair> entry = iterator.next();
                     double alpha = entry.getValue().first / ((diffSimDTW.size() - 1) * 25 * 5);
@@ -172,13 +180,13 @@ public class Similarity {
                     } else {
                         diffDTWWrong.insert(insert);
                     }
-                    FileWriter writer = new FileWriter(fileLoc2 + "/TimeWarping/Similarity/diffSim/" + entry.getKey() + ".csv");
+                    FileWriter writer = new FileWriter(FILE_LOC + "/TimeWarping/Similarity/diffSim/" + entry.getKey() + ".csv");
                     writer.write(String.valueOf(alpha) + ',' + beta);
                     writer.close();
                 }
             }
         } catch (Exception e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
     }
 
@@ -191,7 +199,7 @@ public class Similarity {
      * @return cosine similarity
      */
     protected static BigDecimal cosineSim(String[] a, String[] b) {
-        BigDecimal x = BigDecimal.ZERO;
+        BigDecimal x;
         int size = a.length;
         BigInteger magA = BigInteger.ZERO;
         BigInteger magB = BigInteger.ZERO;
@@ -215,7 +223,7 @@ public class Similarity {
      */
     static void DTWSim() throws FileNotFoundException, IOException {
         DTWSimilarity d = new DTWSimilarity();
-        File dir = new File("/Users/josephyearsley/Documents/University/Data/TimeWarping/");
+        File dir = new File("../Data/Converted/TimeWarping/");
         File[] directoryListing = dir.listFiles();
         /*
          * Split into persons name, test name, and test attempt Then go through
@@ -233,8 +241,8 @@ public class Similarity {
                     char checkSecond = child.getName().charAt(1);
                     char taskFirst = child.getName().charAt(2);
                     char taskSecond = child.getName().charAt(3);
-                    List<Double> v1Alpha = new ArrayList<Double>();
-                    List<Double> v1Beta = new ArrayList<Double>();
+                    List<Double> v1Alpha = new ArrayList<>();
+                    List<Double> v1Beta = new ArrayList<>();
                     String[] nextLine;
                     while ((nextLine = reader.readNext()) != null) {
                         v1Alpha.add(Double.valueOf(nextLine[0]));
@@ -301,9 +309,9 @@ public class Similarity {
      * @throws IOException Something has gone wrong whilst writing the file.
      */
     public static void calcSim() throws IOException {
-        CSVReader reader = null;
-        BigDecimal runningAverageSelf = BigDecimal.ZERO;
-        BigDecimal runningAverageDiff = BigDecimal.ZERO;
+        CSVReader reader;
+        BigDecimal runningAverageSelf;
+        BigDecimal runningAverageDiff;
         String[] signal1 = new String[2];
         String[] signal2 = new String[2];
         /*
@@ -311,7 +319,7 @@ public class Similarity {
          * file, ensuring its not hidden or directory. Then check if its already
          * converted, if not then convert and write
          */
-        File dir = new File(fileLoc);
+        File dir = new File("../Data/Converted/Cosine/");
         File[] directoryListing = dir.listFiles();
         /*
          * Split into persons name, test name, and test attempt Then go through
@@ -330,7 +338,7 @@ public class Similarity {
                     char taskFirst = child.getName().charAt(2);
                     char taskSecond = child.getName().charAt(3);
                     //See if file already exists, if it does miss all code out
-                    File temp = new File(fileLoc + "/Similarity/selfSim/" + checkFirst + checkSecond + ".csv");
+                    File temp = new File(FILE_LOC + "/Similarity/selfSim/" + checkFirst + checkSecond + ".csv");
                     Task tempCheckSelf = selfSim.get(checkFirst + "" + checkSecond);
                     if (tempCheckSelf == null) {
                         tempCheckSelf = new Task();
@@ -397,5 +405,13 @@ public class Similarity {
                 }
             }
         }
+    }
+    
+    /**
+     * Closes the mongo connection to save memory.
+     */
+    public void closeMongoClient(){
+        //Close the client to ensure memory preservation.
+        mongoClient.close();
     }
 }

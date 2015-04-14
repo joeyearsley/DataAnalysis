@@ -8,6 +8,7 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
+import java.io.File;
 import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -26,8 +27,8 @@ import org.apache.commons.lang3.ArrayUtils;
 
 public class DtwSimilarity {
 
-    static MongoClient mongoClient = null;
-    static String fileLoc = null;
+    static MongoClient mongoClient;
+    static String fileLoc;
     static DB diss;
     static DBCollection self;
     static DBCollection diff;
@@ -54,7 +55,13 @@ public class DtwSimilarity {
         if (selfAllTasks.length() > 0) {
             sAT = true;
         }
-        fileLoc = "/Users/josephyearsley/Documents/University/Data/Converted/";
+        fileLoc = "../Data/Converted/TimeWarping/";
+        if(!new File(fileLoc + "Similarity/selfSim/").exists()){
+            new File(fileLoc + "Similarity/selfSim/").mkdirs();
+        }
+        if(!new File(fileLoc + "Similarity/diffSim/").exists()){
+            new File(fileLoc + "Similarity/diffSim/").mkdirs();
+        }
         mongoClient = new MongoClient("localhost", 27017);
         diss = mongoClient.getDB("Dissertation");
         Set<String> colNames = diss.getCollectionNames();
@@ -159,7 +166,7 @@ public class DtwSimilarity {
         while (iterator.hasNext()) {
             Map.Entry<String, Double> entry = iterator.next();
             double val = (entry.getValue() / 5);
-            FileWriter writer = new FileWriter(fileLoc + "/TimeWarping/Similarity/selfSim/" + entry.getKey() + ".csv");
+            FileWriter writer = new FileWriter(fileLoc + "Similarity/selfSim/" + entry.getKey() + ".csv");
             if (!self.find(new BasicDBObject("subject", entry.getKey())).limit(1).hasNext()) {
                 DBObject insert = new BasicDBObject("subject", entry.getKey());
                 insert.put("value", val);
@@ -257,13 +264,21 @@ public class DtwSimilarity {
             } else {
                 diff.insert(insert);
             }
-            FileWriter writer = new FileWriter(fileLoc + "/TimeWarping/Similarity/diffSim/" + entry.getKey() + ".csv");
+            FileWriter writer = new FileWriter(fileLoc + "Similarity/diffSim/" + entry.getKey() + ".csv");
             try {
                 writer.write(Double.toString(val));
             } finally {
                 writer.close();
             }
         }
+    }
+    
+    /**
+     * Closes the mongo connection to save memory.
+     */
+    public void closeMongoClient(){
+        //Close the client to ensure memory preservation.
+        mongoClient.close();
     }
 
 }

@@ -15,14 +15,14 @@ import java.util.Map;
  */
 public class Task {
 
-    final Map<String, BigDecimal> taskKeeper = new HashMap<>();
+    public final Map<String, BigDecimal> taskKeeper = new HashMap<>();
 
     /**
      * To insert into hash map for each task. 
      * @param s The task name.
      * @param d The task value.
      */
-    void put(String s, BigDecimal d) {
+    public void put(String s, BigDecimal d) {
         if (taskKeeper.get(s) == null) {
             taskKeeper.put(s, BigDecimal.ZERO);
         }
@@ -34,7 +34,7 @@ public class Task {
      * @param i The number of comparisons it has done.
      * @return The average value.
      */
-    BigDecimal getAverage(int i) {
+    public BigDecimal getAverage(int i) {
         BigDecimal value = BigDecimal.ZERO;
         synchronized (taskKeeper) {
             //go through each task 

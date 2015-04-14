@@ -77,7 +77,7 @@ public class CommandHelpers {
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(stdin));
                 writer.write("use admin\n");
                 writer.flush();
-                writer.write("db.shutdownServer({timeoutSecs: 60})");
+                writer.write("db.shutdownServer({timeoutSecs: 10})");
                 writer.write("\n");
                 writer.flush();
                 writer.write("exit\n");
@@ -121,16 +121,18 @@ public class CommandHelpers {
         cmdLine.addArgument(gN , true);
         cmdLine.addArgument(gT , true);
         cmdLine.addArgument(r , false);
+        cmdLine.addArgument("../R",false);
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         PumpStreamHandler psh = new PumpStreamHandler(stdout);
         DefaultExecutor executor = new DefaultExecutor();
         executor.setStreamHandler(psh);
         //set directory
-        executor.setWorkingDirectory(new File("/Users/josephyearsley/documents/university/dissertation/r"));
+        executor.setWorkingDirectory(new File("../R"));
         //Run the commands
         executor.execute(cmdLine);
         //Print out all info returned
         System.out.println(stdout.toString());
         
     }
+    
 }
