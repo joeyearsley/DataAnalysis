@@ -124,41 +124,5 @@ graph <- function(fileName, fileType, graphName, graphType, rounding){
 }
 graph("test","eps","test","dtw",7)
 
-selfDtw <- function(){
-  bson = mongo.findOne(mongo, ns = "Dissertation.timeWarping", query='{"subject":"jy","task":"jz","timesDone":1}')
-  alpha1 = mongo.bson.value(bson,"alpha")
-  beta1 = mongo.bson.value(bson,"beta")
-  bson = mongo.findOne(mongo, ns = "Dissertation.timeWarping", query='{"subject":"jy","task":"jz","timesDone":3}')
-  alpha2 = mongo.bson.value(bson,"alpha")
-  beta2 = mongo.bson.value(bson,"beta")
-  alphaAlign <- dtw(alpha1,alpha2,keep=TRUE)
-  betaAlign <- dtw(beta1,beta2,keep=TRUE)
-  plot(alphaAlign,type="threeway")
-  plot(betaAlign,type="threeway")
-  x<- dtwDist(alpha1,alpha2,keep=TRUE)[1,1]
-  print(x<- 1- (x /(1+x)))
- x <- dtwDist(beta1,beta2,keep=TRUE)[1,1]
-  print(1- (x /(1+x)))
-}
-
-crossDtw <- function(){
-  bson = mongo.findOne(mongo, ns = "Dissertation.timeWarping", query='{"subject":"jy","task":"jz","timesDone":1}')
-  alpha1 = mongo.bson.value(bson,"alpha")
-  beta1 = mongo.bson.value(bson,"beta")
-  bson = mongo.findOne(mongo, ns = "Dissertation.timeWarping", query='{"subject":"fm","task":"jz","timesDone":1}')
-  alpha2 = mongo.bson.value(bson,"alpha")
-  beta2 = mongo.bson.value(bson,"beta")
-  alphaAlign <- dtw(alpha1,alpha2,keep=TRUE)
-  betaAlign <- dtw(beta1,beta2,keep=TRUE)
-  plot(alphaAlign,type="threeway")
-  plot(betaAlign,type="threeway")
-  x <- dtwDist(alpha1,alpha2,keep=TRUE)[1,1]
-  print(1- (x /(1+x)))
-  x <- dtwDist(beta1,beta2,keep=TRUE)[1,1]
-  print(1- (x /(1+x)))
-}
-
 options(scipen=999)
-selfDtw()
-crossDtw()
 graph(args[2], args[3], args[4], args[5], as.numeric(args[6]))

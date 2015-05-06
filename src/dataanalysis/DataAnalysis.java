@@ -59,10 +59,10 @@ public class DataAnalysis {
             //Call Rscript to plot these graphs
             helper.graphSimilarites("Cosine Similarity", "eps", "Cosine Similarity", "cos", "4");
             helper.graphSimilarites("Wrong Cosine Similarity", "eps", "Wrong Cosine Similarity", "wcos", "4");
-            helper.graphSimilarites("Dtw Similarity", "eps", "DTW Similarity", "dtw", "10");
-            helper.graphSimilarites("Wrong Dtw Similarity", "eps", "Wrong DTW Similarity", "wdtw", "10");
-            helper.graphSimilarites("Cosine Similarity with Extras", "eps", "Cosine Similarity with Extras", "ecos", "10");
-            helper.graphSimilarites("Dtw Similarity with Extras", "eps", "DTW Similarity with Extras", "edtw", "10");
+            helper.graphSimilarites("Dtw Similarity", "eps", "DTW Similarity", "dtw", "4");
+            helper.graphSimilarites("Wrong Dtw Similarity", "eps", "Wrong DTW Similarity", "wdtw", "4");
+            helper.graphSimilarites("Cosine Similarity with Extras", "eps", "Cosine Similarity with Extras", "ecos", "4");
+            helper.graphSimilarites("Dtw Similarity with Extras", "eps", "DTW Similarity with Extras", "edtw", "4");
             //Close everything up
             helper.closeMongo(DEV_MODE);
         } catch (Exception e) {

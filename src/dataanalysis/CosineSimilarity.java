@@ -320,7 +320,7 @@ public class CosineSimilarity {
                         Integer[] tempOne = new Integer[2];
                         tempOne[0] = alpha[i];
                         tempOne[1] = beta[i];
-                        //Don't want to compare to self
+                        // want to compare to self
                         for (int j = 0; j < alpha.length; j++) {
                             Integer[] tempTwo = new Integer[2];
                             tempTwo[0] = alphaInner[j];

@@ -121,7 +121,8 @@ public class CommandHelpers {
         cmdLine.addArgument(gN , true);
         cmdLine.addArgument(gT , true);
         cmdLine.addArgument(r , false);
-        cmdLine.addArgument("../R",false);
+        //add argument to say where to save the graphs
+        cmdLine.addArgument(System.getProperty("user.dir")+"/../R",false);
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         PumpStreamHandler psh = new PumpStreamHandler(stdout);
         DefaultExecutor executor = new DefaultExecutor();
